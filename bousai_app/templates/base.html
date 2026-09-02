@@ -4,30 +4,190 @@
   <meta charset="utf-8">
   <title>{% block title %}防災アプリ{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --header-blue: #0d4d85;
+      --header-blue-deep: #0a3f6f;
+      --page-bg: #edf1f4;
+      --panel-bg: #eef2f5;
+      --card-bg: #f4f7f9;
+      --border: #d9e3ea;
+      --text: #1d2d3a;
+      --muted: #6d7d8b;
+      --primary: #1d4d8b;
+      --accent: #2f9a7d;
+      --accent-soft: #dff6ef;
+      --warning: #ffb11a;
+      --shadow: 0 2px 8px rgba(14, 44, 74, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--page-bg);
+      color: var(--text);
+      font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    .site-header {
+      background: linear-gradient(180deg, var(--header-blue) 0%, var(--header-blue-deep) 100%);
+      box-shadow: 0 2px 0 rgba(0,0,0,0.05);
+      position: relative;
+      z-index: 10;
+    }
+
+    .header-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .header-nav {
+      background: rgba(17, 71, 120, 0.92);
+      border-top: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .header-nav-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px 18px;
+    }
+
+    .header-nav a {
+      color: #edf6ff;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.2;
+      padding: 7px 12px;
+      border-radius: 999px;
+      transition: background 0.2s ease;
+    }
+
+    .header-nav a:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    .app-title {
+      margin: 0;
+      color: #fff;
+      font-size: 42px;
+      line-height: 1;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+
+    .menu-toggle {
+      width: 42px;
+      height: 42px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .menu-toggle span {
+      display: block;
+      width: 28px;
+      height: 3px;
+      background: rgba(255,255,255,0.95);
+      border-radius: 4px;
+    }
+
+    .site-nav {
+      display: none;
+      position: absolute;
+      top: 72px;
+      right: 18px;
+      background: rgba(8, 50, 86, 0.96);
+      border-radius: 10px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      padding: 12px 16px;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 200px;
+    }
+
+    .site-header.open .site-nav {
+      display: flex;
+    }
+
+    .site-nav a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 15px;
+      padding: 6px 0;
+    }
+
+    .site-nav a:hover {
+      opacity: 0.8;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+  </style>
 </head>
 <body>
-  <!-- ヘッダー -->
-  <h1>防災アプリ</h1>
+  <header class="site-header" id="siteHeader">
+    <div class="header-inner">
+      <h1 class="app-title">防災アプリ</h1>
+      <button class="menu-toggle" type="button" aria-label="メニュー" onclick="document.getElementById('siteHeader').classList.toggle('open')">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
 
-  <!-- ナビゲーション -->
-  <nav>
-    <a href="/">ホーム</a> |
-    <a href="/shelter_search">避難所検索</a> |
-    <a href="/shelter_register">避難所登録</a> |
-    <a href="/board">指示・発信ボード</a>
-    ｜
-    {% if session.logged_in %}
-      ログイン中{% if session.username %}（{{ session.username }}）{% endif %}
-      <a href="/logout">ログアウト</a>
-    {% else %}
-      未ログイン
-      <a href="/login">ログイン</a>
-    {% endif %}
-  </nav>
-  <hr>
+    <nav class="header-nav" aria-label="メインナビゲーション">
+      <div class="header-nav-inner">
+        <a href="/">ホーム</a>
+        <a href="/shelter_search">避難所検索</a>
+        <a href="/shelter_register">避難所登録</a>
+        <a href="/board">指示・発信ボード</a>
+        {% if session.logged_in %}
+          <a href="/logout">ログアウト</a>
+        {% else %}
+          <a href="/login">ログイン</a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <nav class="site-nav" aria-label="メニュー">
+      <a href="/">ホーム</a>
+      <a href="/shelter_search">避難所検索</a>
+      <a href="/shelter_register">避難所登録</a>
+      <a href="/board">指示・発信ボード</a>
+      {% if session.logged_in %}
+        <a href="/logout">ログアウト</a>
+      {% else %}
+        <a href="/login">ログイン</a>
+      {% endif %}
+    </nav>
+  </header>
 
   <main>
-    <!-- ここに子テンプレートの content が入る -->
     {% block content %}{% endblock %}
   </main>
 </body>
