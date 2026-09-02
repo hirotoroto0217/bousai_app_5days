@@ -246,7 +246,16 @@ def get_weather_warnings():
 @app.route('/')
 def index():
     resident_notices = [i for i in instructions if i.get('target') == '住民']
-    return render_template('index.html', resident_notices=resident_notices)
+    latest_instructions = sorted(
+        resident_notices,
+        key=lambda item: item.get('updated_at') or item.get('created_at') or '',
+        reverse=True
+    )[:3]
+    return render_template(
+        'index.html',
+        resident_notices=resident_notices,
+        latest_instructions=latest_instructions
+    )
 
 # ログインページ
 @app.route('/login', methods=['GET', 'POST'])
