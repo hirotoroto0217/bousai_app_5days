@@ -6,7 +6,11 @@
 {% if results %}
   <ul>
     {% for shelter in results %}
-    <li>{{ shelter.name }}</li>
+    <li>
+      <a href="{{ url_for('shelter_detail', shelter_id=shelter.id) }}">{{ shelter.name }}</a><br>
+      {{ shelter.address|default('住所未登録') }}
+      {% if shelter.distance_available %}<br>現在地から {{ shelter.distance_km }} km{% endif %}
+    </li>
     {% endfor %}
   </ul>
 {% else %}

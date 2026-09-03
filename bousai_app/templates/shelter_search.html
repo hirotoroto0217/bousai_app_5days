@@ -1,8 +1,70 @@
 {% extends "base.html" %}
-
+{% block title %}避難所検索 - 防災アプリ{% endblock %}
 {% block content %}
+<style>
+  .search-form { max-width: 640px; }
+  .search-form fieldset { border: 1px solid #b8c4cc; margin: 14px 0; padding: 12px; }
+  .search-form label { display: block; margin: 8px 0; }
+  .search-form select, .search-form input[type="radio"], .search-form input[type="checkbox"] { margin-right: 8px; }
+  .search-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .search-actions button, .search-actions a { padding: 9px 14px; }
+</style>
 <h2>避難所検索</h2>
-<p>登録されている避難所を確認できます。</p>
-
-<p><a href="/all_shelters">全施設一覧</a></p>
+<p>条件を選択して、利用できる避難所を検索します。</p>
+<form id="shelterSearchForm" class="search-form" method="get" action="/search_results">
+  <fieldset><legend>災害選択</legend>
+    <label><input type="radio" name="disaster" value="津波">津波</label>
+    <label><input type="radio" name="disaster" value="河川氾濫">河川氾濫</label>
+    <label><input type="radio" name="disaster" value="道路冠水">道路冠水</label>
+    <label><input type="radio" name="disaster" value="土砂崩れ">土砂崩れ</label>
+    <label><input type="radio" name="disaster" value="積雪">積雪</label>
+    <label><input type="radio" name="disaster" value="地震">地震</label>
+  </fieldset>
+  <fieldset><legend>避難人数</legend>
+    <select name="capacity"><option value="">選択してください</option>{% for n in range(1, 101, 10) %}<option value="{{ n }}">{{ n }}～{{ n + 9 }}人</option>{% endfor %}<option value="100">100人以上</option></select>
+  </fieldset>
+  <fieldset><legend>対応</legend>
+    <p>高齢者</p><label><input type="radio" name="elderly" value="1">含む</label><label><input type="radio" name="elderly" value="0">含まない</label>
+    <p>子ども</p><label><input type="radio" name="children" value="1">含む</label><label><input type="radio" name="children" value="0">含まない</label>
+  </fieldset>
+  <fieldset><legend>今の状況</legend>
+    <label><input type="checkbox" name="condition" value="wheelchair">車椅子</label>
+    <label><input type="checkbox" name="condition" value="mobility">からだの不自由</label>
+    <label><input type="checkbox" name="condition" value="pets">ペット同伴</label>
+  </fieldset>
+  <input type="hidden" name="lat"><input type="hidden" name="lng">
+  <div class="search-actions"><button type="submit">検索</button><a href="/shelter_search">リセット</a></div>
+</form>
+<script>
+  let currentLat = null;
+  let currentLng = null;
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(position) {
+      currentLat = position.coords.latitude;
+      currentLng = position.coords.longitude;
+    }, function(error) {
+      console.warn('位置情報を取得できませんでした', error.message);
+    }, { timeout: 5000, maximumAge: 0 });
+  }
+  document.getElementById('shelterSearchForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const formData = new FormData(this);
+    const params = new URLSearchParams();
+    const disaster = formData.get('disaster');
+    const capacity = formData.get('capacity');
+    const elderly = formData.get('elderly');
+    const children = formData.get('children');
+    const conditions = formData.getAll('condition');
+    if (disaster) params.set('disasters', disaster);
+    if (capacity) params.set('capacity', capacity);
+    if (elderly !== null) params.set('elderly', elderly);
+    if (children !== null) params.set('children', children);
+    if (conditions.length) params.set('conditions', conditions.join(','));
+    if (currentLat !== null && currentLng !== null) {
+      params.set('lat', currentLat);
+      params.set('lng', currentLng);
+    }
+    window.location.href = '/search_results?' + params.toString();
+  });
+</script>
 {% endblock %}

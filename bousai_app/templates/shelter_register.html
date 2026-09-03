@@ -1,45 +1,112 @@
 {% extends "base.html" %}
 
+{% block title %}避難所登録 - 防災アプリ{% endblock %}
+
 {% block content %}
+{% set form_errors = errors|default({}) %}
+<style>
+  .shelter-form { max-width: 680px; }
+  .shelter-form label { display: inline-block; margin-bottom: 4px; font-weight: 700; }
+  .shelter-form input, .shelter-form select { width: 100%; max-width: 520px; padding: 8px; font: inherit; }
+  .field-error { display: block; margin: 4px 0 0; color: #b00020; font-size: 14px; }
+  .message-success { color: #126b37; font-weight: 700; }
+  .message-error { color: #b00020; font-weight: 700; }
+  .form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .shelter-table { border-collapse: collapse; margin-top: 12px; }
+  .shelter-table th, .shelter-table td { border: 1px solid #b8c4cc; padding: 8px 12px; text-align: left; }
+  .delete-confirm { border: 2px solid #b00020; padding: 12px; margin: 16px 0; max-width: 680px; }
+  .disaster-options { display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 520px; }
+  .disaster-options label { font-weight: 400; }
+</style>
+
 <h2>避難所登録</h2>
 <p>新しい避難所情報を登録します。</p>
 
-<!-- 成功・エラーメッセージ表示 -->
-{% if success %}
-  <p>{{ message }}</p>
-{% endif %}
-
+{% if success %}<p class="message-success" role="status">{{ message }}</p>{% endif %}
 {% if error %}
-  <p>{{ message }}</p>
+  <p class="message-error" role="alert">{{ message }}</p>
+  {% if errors %}
+    <ul class="message-error">
+      {% for field, field_message in form_errors.items() %}<li>{{ field_message }}</li>{% endfor %}
+    </ul>
+  {% endif %}
 {% endif %}
 
-<form method="POST">
+{% if confirm_delete %}
+  <div class="delete-confirm" role="alert">
+    <p>データを削除しますか？</p>
+    <form method="post">
+      <input type="hidden" name="name" value="{{ form_data.name }}">
+      <button type="submit" name="action" value="confirm_delete">はい</button>
+      <button type="submit" name="action" value="cancel_delete">いいえ</button>
+    </form>
+  </div>
+{% endif %}
+
+<form method="post" class="shelter-form" novalidate>
+  <p>
+    <span class="field-label">災害の種類（必須）</span>
+    <span class="disaster-options">
+      {% for disaster in ['津波', '河川氾濫', '道路冠水', '土砂崩れ', '積雪', '地震'] %}
+        <label><input type="checkbox" name="disasters" value="{{ disaster }}" {% if disaster in form_data.disasters|default([]) %}checked{% endif %}>{{ disaster }}</label>
+      {% endfor %}
+    </span>
+    {% if form_errors.disasters %}<span class="field-error">{{ form_errors.disasters }}</span>{% endif %}
+  </p>
   <p>
     <label for="name">避難所名（必須）</label><br>
-    <input type="text" id="name" name="name">
+    <input type="text" id="name" name="name" value="{{ form_data.name|default('') }}" placeholder="例：○○小学校" required>
+    {% if form_errors.name %}<span class="field-error">{{ form_errors.name }}</span>{% endif %}
   </p>
   <p>
     <label for="address">住所（必須）</label><br>
-    <input type="text" id="address" name="address" placeholder="青森市〇〇町1-2-3" required>
+    <input type="text" id="address" name="address" value="{{ form_data.address|default('') }}" placeholder="例：青森県青森市青葉3丁目1番2号" required>
+    {% if form_errors.address %}<span class="field-error">住所：{{ form_errors.address }}</span>{% endif %}
   </p>
   <p>
-    <label for="opening_status">開設状況</label><br>
-    <select id="opening_status" name="opening_status">
-      <option value="未開設">未開設</option>
-      <option value="開設中">開設中</option>
-      <option value="閉鎖">閉鎖</option>
-    </select>
+    <label for="capacity">収容人数（必須）</label><br>
+    <input type="text" id="capacity" name="capacity" inputmode="numeric" value="{{ form_data.capacity|default('') }}" placeholder="例：500" required>
+    {% if form_errors.capacity %}<span class="field-error">収容人数：{{ form_errors.capacity }}</span>{% endif %}
   </p>
   <p>
-    <label for="congestion_status">混雑状況</label><br>
-    <select id="congestion_status" name="congestion_status">
-      <option value="不明">不明</option>
-      <option value="空き">空き</option>
-      <option value="やや混雑">やや混雑</option>
-      <option value="混雑">混雑</option>
-      <option value="満員">満員</option>
-    </select>
+    <label for="phone">電話番号（必須）</label><br>
+    <input type="tel" id="phone" name="phone" value="{{ form_data.phone|default('') }}" placeholder="例：017-0000-0000" required>
+    {% if form_errors.phone %}<span class="field-error">電話番号：{{ form_errors.phone }}</span>{% endif %}
   </p>
-  <p><button type="submit">登録</button></p>
+  <p>
+    <label for="status">開設状況（必須）</label><br>
+    <select id="status" name="status" required>
+      <option value="">選択してください</option>
+      <option value="開設" {% if form_data.status == '開設' %}selected{% endif %}>開設</option>
+      <option value="未開設" {% if form_data.status == '未開設' %}selected{% endif %}>未開設</option>
+    </select>
+    {% if form_errors.status %}<span class="field-error">開設状況：{{ form_errors.status }}</span>{% endif %}
+  </p>
+  <p>
+    <label for="pet_acceptance">ペット受け入れ（必須）</label><br>
+    <select id="pet_acceptance" name="pet_acceptance" required>
+      <option value="">選択してください</option>
+      <option value="可" {% if form_data.pet_acceptance == '可' %}selected{% endif %}>可</option>
+      <option value="不可" {% if form_data.pet_acceptance == '不可' %}selected{% endif %}>不可</option>
+    </select>
+    {% if form_errors.pet_acceptance %}<span class="field-error">ペット受け入れ：{{ form_errors.pet_acceptance }}</span>{% endif %}
+  </p>
+  <div class="form-actions">
+    <button type="submit" name="action" value="register">登録/更新</button>
+  </div>
 </form>
+
+<h3>登録済み避難所一覧</h3>
+{% if shelters %}
+  <table class="shelter-table">
+    <thead><tr><th>避難所名</th></tr></thead>
+    <tbody>
+      {% for shelter in shelters %}
+        <tr><td><a href="{{ url_for('shelter_detail', shelter_id=shelter.id) }}">{{ shelter.name }}</a></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>登録されている避難所はありません。</p>
+{% endif %}
 {% endblock %}

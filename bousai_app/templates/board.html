@@ -1,25 +1,53 @@
 {% extends "base.html" %}
-
-{% block title %}指示・発信ボード - 防災アプリ{% endblock %}
-
+{% block title %}{% if is_admin %}指示・発信ボード{% else %}掲示板{% endif %} - 防災アプリ{% endblock %}
 {% block content %}
-<h2>発信ボード</h2>
-<p>住民向けの発信を登録・確認できます。</p>
+<style>
+.board-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.board-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.board-tabs button { padding:9px 14px; border:1px solid #0d4d85; background:#e9f0f7; cursor:pointer; }
+.board-tabs button.active { background:#0d4d85; color:#fff; }
+.board-tabs .send-tab { margin-left:18px; background:#e88b32; border-color:#b76518; color:#fff; }
+.board-layout { display:grid; grid-template-columns:1fr 1.4fr 250px; gap:14px; }
+.board-panel { border:1px solid #b8c4cc; padding:12px; background:#f7f7f7; min-width:0; }
+.board-list { list-style:none; padding:0; margin:0; }
+.board-list button { display:block; width:100%; padding:10px; border:0; border-bottom:1px solid #d4dce2; background:#fff; text-align:left; cursor:pointer; overflow-wrap:anywhere; }
+.board-list button:hover, .board-list button.selected { background:#e4f0fa; }
+.board-list small, .detail-meta { color:#536a77; }
+.board-content { white-space:pre-wrap; overflow-wrap:anywhere; }
+.board-form label { display:block; margin-top:10px; font-weight:700; }
+.board-form input, .board-form select, .board-form textarea { width:100%; padding:8px; font:inherit; }
+.board-form textarea { min-height:110px; resize:vertical; }
+.board-form button { margin-top:12px; padding:9px 14px; cursor:pointer; }
+.hidden { display:none; }
+@media (max-width:800px) { .board-layout { grid-template-columns:1fr; } .board-tabs .send-tab { margin-left:0; } }
+</style>
 
-<!-- 発信一覧 -->
-<h3>発信一覧</h3>
-{% if instructions %}
-<table border="1" cellpadding="5">
-  <tr>
-    <th>内容</th>
-  </tr>
-  {% for inst in instructions %}
-  <tr>
-    <td>{{ inst.content }}{% if inst.shelter %}（避難先: {{ inst.shelter }}）{% endif %}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% else %}
-<p>登録されている指示はありません。</p>
-{% endif %}
+<div class="board-head"><h2>{% if is_admin %}指示・発信ボード{% else %}掲示板{% endif %}</h2><span>{% if is_admin %}管理者{% else %}一般利用者{% endif %}</span></div>
+<div class="board-tabs">
+  <button type="button" data-view="published" class="active">発信情報</button>
+  {% if is_admin %}<button type="button" data-view="instructions">指示一覧</button><button type="button" data-view="citizens">市民からの情報 <b id="unreadBadge"></b></button><button type="button" data-view="send" class="send-tab">情報送信</button>{% else %}<button type="button" data-view="report" class="send-tab">行政へ情報を送る</button>{% endif %}
+</div>
+
+<section id="listView" class="board-layout">
+  <div class="board-panel"><h3 id="listTitle">発信情報</h3><ul id="boardList" class="board-list"><li>読み込み中...</li></ul></div>
+  <div class="board-panel"><h3>詳細</h3><div id="boardDetail">一覧から選択してください。</div></div>
+  <div class="board-panel"><h3>絞り込み</h3><label for="keyword">キーワード</label><input id="keyword" type="search"><label for="typeFilter">災害種別</label><input id="typeFilter"><label for="urgencyFilter">緊急度</label><select id="urgencyFilter"><option value="">すべて</option><option>高</option><option>中</option><option>低</option></select></div>
+</section>
+
+<section id="formView" class="board-panel board-form hidden"><h3 id="formTitle">情報送信</h3><form id="boardForm"><label>タイトル<input name="title" required maxlength="100"></label><label>災害種別<input name="type" required maxlength="30"></label><label>場所<input name="location" required maxlength="100"></label><label class="admin-only">緊急度<select name="urgency"><option>高</option><option selected>中</option><option>低</option></select></label><label class="citizen-only">名前（任意）<input name="name" maxlength="50"></label><label>内容<textarea name="content" required maxlength="2000"></textarea></label><button type="submit">入力内容を確認</button></form><div id="formMessage" role="status"></div></section>
+
+<script>
+const isAdmin = {{ 'true' if is_admin else 'false' }};
+let currentView = 'published'; let currentItems = [];
+const list = document.getElementById('boardList'); const detail = document.getElementById('boardDetail');
+const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const api = (url, options) => fetch(url, {headers:{'Content-Type':'application/json'}, ...options}).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e)));
+function renderItems() { const keyword=document.getElementById('keyword').value.toLowerCase(); const type=document.getElementById('typeFilter').value.toLowerCase(); const urgency=document.getElementById('urgencyFilter').value; const filtered=currentItems.filter(x => JSON.stringify(x).toLowerCase().includes(keyword) && (!type || String(x.type||'').toLowerCase().includes(type)) && (!urgency || x.urgency===urgency)); list.innerHTML=filtered.length ? filtered.map(x=>`<li><button type="button" data-id="${x.id}"><strong>${esc(x.title||x.content)}</strong><br><small>${esc(x.type||'')} / ${esc(x.location||'')} / ${esc(x.urgency||x.status||'')}<br>${esc(x.created_at||'')}</small></button></li>`).join('') : '<li>表示する情報はありません。</li>'; list.querySelectorAll('button').forEach(b=>b.onclick=()=>showDetail(filtered.find(x=>String(x.id)===b.dataset.id))); }
+function showDetail(item) { if(!item) return; detail.innerHTML=`<h4>${esc(item.title||item.content)}</h4><p class="detail-meta">日時: ${esc(item.created_at||'')}<br>種別: ${esc(item.type||'')}<br>場所: ${esc(item.location||'')}<br>緊急度・状態: ${esc(item.urgency||item.status||'')}</p><p class="board-content">${esc(item.content)}</p>`; if(isAdmin && currentView==='citizens' && !item.read) api('/api/mark_citizen_report_read',{method:'POST',body:JSON.stringify({id:item.id})}).then(load); }
+function load() { const endpoint=currentView==='published'?'/api/published_info':currentView==='instructions'?'/api/instructions':'/api/citizen_reports'; api(endpoint).then(items=>{currentItems=items; document.getElementById('listTitle').textContent=currentView==='published'?'発信情報':currentView==='instructions'?'指示一覧':'市民からの情報'; renderItems(); if(currentView==='citizens') { const unread=items.filter(x=>!x.read).length; document.getElementById('unreadBadge').textContent=unread?`(${unread})`:''; }}).catch(()=>{list.innerHTML='<li>通信エラーが発生しました。</li>';}); }
+function switchView(view) { if(view==='send'||view==='report') { document.getElementById('listView').classList.add('hidden'); document.getElementById('formView').classList.remove('hidden'); document.getElementById('formTitle').textContent=view==='report'?'行政へ情報を送る':'情報送信'; document.querySelectorAll('.admin-only').forEach(x=>x.classList.toggle('hidden',view==='report')); document.querySelectorAll('.citizen-only').forEach(x=>x.classList.toggle('hidden',view!=='report')); return; } document.getElementById('formView').classList.add('hidden'); document.getElementById('listView').classList.remove('hidden'); currentView=view; load(); }
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); switchView(b.dataset.view);}); ['keyword','typeFilter','urgencyFilter'].forEach(id=>document.getElementById(id).oninput=renderItems);
+document.getElementById('boardForm').onsubmit=e=>{e.preventDefault(); const data=Object.fromEntries(new FormData(e.target)); const target=isAdmin && document.getElementById('formTitle').textContent==='情報送信'?'/api/publish_info':'/api/add_citizen_report'; if(!confirm(`この内容で送信しますか？\n\n${data.title}\n${data.content}`)) return; api(target,{method:'POST',body:JSON.stringify(data)}).then(()=>{document.getElementById('formMessage').textContent='送信しました。'; e.target.reset();}).catch(()=>{document.getElementById('formMessage').textContent='送信に失敗しました。';});};
+load();
+</script>
 {% endblock %}

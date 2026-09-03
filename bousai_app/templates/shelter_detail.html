@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ shelter.name }} - 避難所詳細{% endblock %}
+
+{% block content %}
+<style>
+  .delete-action {
+    margin-top: 20px;
+  }
+
+  .delete-action button {
+    color: #b00020;
+  }
+</style>
+<h2>避難所詳細</h2>
+<dl>
+  <dt>避難所名</dt><dd>{{ shelter.name }}</dd>
+  <dt>住所</dt><dd>{{ shelter.address }}</dd>
+  <dt>対応する災害</dt><dd>{{ shelter.disasters|join('、') if shelter.disasters else '未登録' }}</dd>
+  <dt>収容人数</dt><dd>{{ shelter.capacity|default('未登録') }}</dd>
+  <dt>電話番号</dt><dd>{{ shelter.phone|default('未登録') }}</dd>
+  <dt>開設状況</dt><dd>{{ shelter.status|default(shelter.opening_status|default('未登録')) }}</dd>
+  <dt>ペット受け入れ</dt><dd>{{ shelter.pet_acceptance|default('未登録') }}</dd>
+</dl>
+<form class="delete-action" method="post" action="{{ url_for('shelter_register') }}">
+  <input type="hidden" name="name" value="{{ shelter.name }}">
+  <button type="submit" name="action" value="delete">削除</button>
+</form>
+<p><a href="{{ url_for('shelter_register') }}">避難所登録へ戻る</a></p>
+{% endblock %}

@@ -28,17 +28,28 @@
     "congestion_status": "不明"
   },
   {
-    "id": 7,
-    "name": "神戸大学",
-    "address": "",
-    "opening_status": "未開設",
+    "id": 9,
+    "name": "青森県庁",
+    "address": "青森県青森市長島一丁目1-1",
+    "capacity": 500,
+    "phone": "000-0010-0000",
+    "status": "開設",
+    "pet_acceptance": "可",
+    "opening_status": "開設",
     "congestion_status": "不明"
   },
   {
-    "id": 8,
-    "name": "神戸大学",
-    "address": "",
-    "opening_status": "未開設",
+    "id": 10,
+    "name": "あああ",
+    "address": "青森県青森市長島一丁目1-4",
+    "capacity": 90,
+    "phone": "000-0010-0303",
+    "status": "開設",
+    "pet_acceptance": "可",
+    "disasters": [
+      "津波"
+    ],
+    "opening_status": "開設",
     "congestion_status": "不明"
   }
 ]
