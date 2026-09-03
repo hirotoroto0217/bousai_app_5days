@@ -18,6 +18,28 @@
     <label for="name">避難所名（必須）</label><br>
     <input type="text" id="name" name="name">
   </p>
+  <p>
+    <label for="address">住所（必須）</label><br>
+    <input type="text" id="address" name="address" placeholder="青森市〇〇町1-2-3" required>
+  </p>
+  <p>
+    <label for="opening_status">開設状況</label><br>
+    <select id="opening_status" name="opening_status">
+      <option value="未開設">未開設</option>
+      <option value="開設中">開設中</option>
+      <option value="閉鎖">閉鎖</option>
+    </select>
+  </p>
+  <p>
+    <label for="congestion_status">混雑状況</label><br>
+    <select id="congestion_status" name="congestion_status">
+      <option value="不明">不明</option>
+      <option value="空き">空き</option>
+      <option value="やや混雑">やや混雑</option>
+      <option value="混雑">混雑</option>
+      <option value="満員">満員</option>
+    </select>
+  </p>
   <p><button type="submit">登録</button></p>
 </form>
 {% endblock %}

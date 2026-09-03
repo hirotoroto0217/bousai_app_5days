@@ -30,6 +30,8 @@ AREA_NAME = "青森市"
 
 # 気象庁の青森市区分コード（青森市）
 AREA_CODE = "0220100"
+LOCATION_LATITUDE = 40.8244
+LOCATION_LONGITUDE = 140.7400
 
 WARNING_URL = (
     f"https://www.jma.go.jp/bosai/warning/data/r8/{PREFECTURE_CODE}.json"
@@ -82,6 +84,7 @@ WARNING_CODES = {
 # サンプルデータの読み込み
 DATA_FILE = os.path.join(APP_DIR, 'data', 'shelters.json')
 INSTRUCTIONS_FILE = os.path.join(APP_DIR, 'data', 'instructions.json')
+DISASTER_REPORTS_FILE = os.path.join(APP_DIR, 'data', 'disaster_reports.json')
 
 def load_json(path, default):
     """JSONファイルを読み込む（存在しない・壊れている場合は default を返す）"""
@@ -93,6 +96,7 @@ def load_json(path, default):
 
 shelters = load_json(DATA_FILE, [])
 instructions = load_json(INSTRUCTIONS_FILE, [])
+disaster_reports = load_json(DISASTER_REPORTS_FILE, [])
 
 def save_instructions():
     """指示ボードのデータをファイルに保存する"""
@@ -108,6 +112,15 @@ def save_shelters():
     try:
         with open(DATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(shelters, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def save_disaster_reports():
+    """災害報告をファイルに保存する"""
+    try:
+        with open(DISASTER_REPORTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(disaster_reports, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
 # ────────────────────────────────
@@ -199,7 +212,14 @@ def parse_area_warnings(warning_data):
 
             status = kind.get("status", "")
             code = kind.get("code", "")
-            if status not in ("発表", "継続") or not code or code in seen_codes:
+            active_statuses = (
+                "発表",
+                "継続",
+                "危険警報から警報",
+                "警報から注意報",
+                "危険警報から注意報"
+            )
+            if status not in active_statuses or not code or code in seen_codes:
                 continue
 
             warnings.append({
@@ -208,7 +228,7 @@ def parse_area_warnings(warning_data):
                     f"不明な警報・注意報 (コード: {code})"
                 ),
                 "code": code,
-                "status": status
+                "status": "発表" if status not in ("発表", "継続") else status
             })
             seen_codes.add(code)
 
@@ -224,10 +244,12 @@ def get_weather_warnings():
             warning_data = json.loads(res.read())
 
         warnings, report_datetime = parse_area_warnings(warning_data)
+        weather = get_weather_forecast()
 
         return {
             "area_name": AREA_NAME,
             "warnings": warnings,
+            "weather": weather,
             "report_time": format_report_time(report_datetime),
             "last_fetch_time": get_japan_time()
         }
@@ -236,10 +258,37 @@ def get_weather_warnings():
         return {
             "area_name": AREA_NAME,
             "warnings": [],
+            "weather": None,
             "report_time": "取得失敗",
             "last_fetch_time": get_japan_time(),
             "error": True
         }
+
+
+def get_weather_forecast():
+    """Open-Meteo から青森市の現在・当日予報を取得する"""
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={LOCATION_LATITUDE}&longitude={LOCATION_LONGITUDE}"
+        "&current=temperature_2m,weather_code"
+        "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code"
+        "&forecast_days=1&timezone=Asia%2FTokyo"
+    )
+    try:
+        with urllib.request.urlopen(url=url, timeout=10) as res:
+            data = json.loads(res.read())
+        current = data.get('current', {})
+        daily = data.get('daily', {})
+        return {
+            'current_temperature': current.get('temperature_2m'),
+            'weather_code': current.get('weather_code'),
+            'maximum_temperature': (daily.get('temperature_2m_max') or [None])[0],
+            'minimum_temperature': (daily.get('temperature_2m_min') or [None])[0],
+            'precipitation_probability': (daily.get('precipitation_probability_max') or [None])[0],
+            'unit': data.get('current_units', {}).get('temperature_2m', '°C')
+        }
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
 
 
 # トップページ：templates/index.html を返す（住民向け指示も表示する）
@@ -254,7 +303,9 @@ def index():
     return render_template(
         'index.html',
         resident_notices=resident_notices,
-        latest_instructions=latest_instructions
+        latest_instructions=latest_instructions,
+        shelters=shelters,
+        disaster_reports=disaster_reports
     )
 
 # ログインページ
@@ -301,6 +352,9 @@ def logout():
 def shelter_register():
     if request.method == 'POST':
         shelter_name = request.form.get('name', '').strip()
+        shelter_address = request.form.get('address', '').strip()
+        opening_status = request.form.get('opening_status', '未開設').strip()
+        congestion_status = request.form.get('congestion_status', '不明').strip()
 
         if not shelter_name:
             return render_template(
@@ -308,11 +362,20 @@ def shelter_register():
                 error=True,
                 message='避難所名を入力してください。'
             )
+        if not shelter_address:
+            return render_template(
+                'shelter_register.html',
+                error=True,
+                message='住所を入力してください。'
+            )
 
         new_id = max((s.get('id', 0) for s in shelters), default=0) + 1
         shelters.append({
             'id': new_id,
             'name': shelter_name,
+            'address': shelter_address,
+            'opening_status': opening_status,
+            'congestion_status': congestion_status,
         })
         save_shelters()
 
@@ -365,6 +428,32 @@ def get_shelters():
 def api_weather_warnings():
     """気象警報・注意報をJSON形式で返すAPI"""
     return jsonify(get_weather_warnings())
+
+
+@app.route('/api/disaster_reports', methods=['GET', 'POST'])
+def api_disaster_reports():
+    """別アプリからの災害報告を取得・登録する API"""
+    if request.method == 'POST':
+        report = request.get_json(silent=True) or {}
+        required = ('type', 'title', 'description', 'address', 'latitude', 'longitude')
+        if any(report.get(field) in (None, '') for field in required):
+            return jsonify({'error': 'type, title, description, address, latitude, longitude are required'}), 400
+
+        new_report = {
+            'id': max((item.get('id', 0) for item in disaster_reports), default=0) + 1,
+            'type': str(report['type']),
+            'title': str(report['title']),
+            'description': str(report['description']),
+            'address': str(report['address']),
+            'latitude': float(report['latitude']),
+            'longitude': float(report['longitude']),
+            'reported_at': report.get('reported_at') or get_japan_time()
+        }
+        disaster_reports.append(new_report)
+        save_disaster_reports()
+        return jsonify(new_report), 201
+
+    return jsonify(disaster_reports)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

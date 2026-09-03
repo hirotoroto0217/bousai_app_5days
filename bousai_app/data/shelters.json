@@ -1,26 +1,44 @@
 [
   {
     "id": 1,
-    "name": "御所見小学校"
+    "name": "御所見小学校",
+    "address": "",
+    "opening_status": "未開設",
+    "congestion_status": "不明"
   },
   {
     "id": 2,
-    "name": "片瀬小学校"
+    "name": "片瀬小学校",
+    "address": "",
+    "opening_status": "未開設",
+    "congestion_status": "不明"
   },
   {
     "id": 5,
-    "name": "鵠洋小学校"
+    "name": "鵠洋小学校",
+    "address": "",
+    "opening_status": "未開設",
+    "congestion_status": "不明"
   },
   {
     "id": 6,
-    "name": "鳥取西高校"
+    "name": "鳥取西高校",
+    "address": "",
+    "opening_status": "未開設",
+    "congestion_status": "不明"
   },
   {
     "id": 7,
-    "name": "神戸大学"
+    "name": "神戸大学",
+    "address": "",
+    "opening_status": "未開設",
+    "congestion_status": "不明"
   },
   {
     "id": 8,
-    "name": "神戸大学"
+    "name": "神戸大学",
+    "address": "",
+    "opening_status": "未開設",
+    "congestion_status": "不明"
   }
 ]
